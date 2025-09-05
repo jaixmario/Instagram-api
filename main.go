@@ -16,6 +16,12 @@ type UserData struct {
 			Biography       string `json:"biography"`
 			IsPrivate       bool   `json:"is_private"`
 			ProfilePicURLHD string `json:"profile_pic_url_hd"`
+			EdgeFollowedBy  struct {
+				Count int `json:"count"` // followers
+			} `json:"edge_followed_by"`
+			EdgeFollow struct {
+				Count int `json:"count"` // following
+			} `json:"edge_follow"`
 		} `json:"user"`
 	} `json:"data"`
 }
@@ -65,7 +71,7 @@ func downloadProfilePic(url, username string) error {
 }
 
 func main() {
-	username := "Hacker_jai_op" //username
+	username := "Hacker_jai_op_pvt" //username
 
 	userData, err := fetchUserDetails(username)
 	if err != nil {
@@ -79,11 +85,15 @@ func main() {
 	fmt.Println("Username:", user.Username)
 	fmt.Println("Name:", user.FullName)
 	fmt.Println("Bio:", user.Biography)
+
 	if user.IsPrivate {
 		fmt.Println("Account Type: 🔒 Private")
 	} else {
 		fmt.Println("Account Type: 🌍 Public")
 	}
+
+	fmt.Printf("Followers: %d\n", user.EdgeFollowedBy.Count)
+	fmt.Printf("Following: %d\n", user.EdgeFollow.Count)
 	fmt.Println("Profile Pic URL:", user.ProfilePicURLHD)
 
 	// Download profile pic
