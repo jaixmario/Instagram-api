@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
 func getUserID(username, sessionID string) (string, error) {
@@ -52,18 +53,31 @@ func downloadStories(userID, sessionID string) error {
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
 
-	items := result["reel"].(map[string]interface{})["items"].([]interface{})
+	reel, ok := result["reel"].(map[string]interface{})
+	if !ok {
+		fmt.Println("No stories available.")
+		return nil
+	}
+
+	items := reel["items"].([]interface{})
 	for i, item := range items {
 		story := item.(map[string]interface{})
-		var url string
+		var mediaURL, ext string
+
 		if video, ok := story["video_versions"]; ok {
-			url = video.([]interface{})[0].(map[string]interface{})["url"].(string)
+			mediaURL = video.([]interface{})[0].(map[string]interface{})["url"].(string)
+			ext = ".mp4"
+		} else if image, ok := story["image_versions2"]; ok {
+			mediaURL = image.(map[string]interface{})["candidates"].([]interface{})[0].(map[string]interface{})["url"].(string)
+			ext = ".jpg"
 		} else {
-			url = story["image_versions2"].(map[string]interface{})["candidates"].([]interface{})[0].(map[string]interface{})["url"].(string)
+			continue
 		}
 
-		fmt.Println("Downloading:", url)
-		if err := saveFile(fmt.Sprintf("story_%d.mp4", i), url, sessionID); err != nil {
+		filename := fmt.Sprintf("story_%d%s", i, ext)
+		fmt.Println("Downloading:", filename)
+
+		if err := saveFile(filename, mediaURL, sessionID); err != nil {
 			return err
 		}
 	}
@@ -80,7 +94,10 @@ func saveFile(filename, url, sessionID string) error {
 	}
 	defer resp.Body.Close()
 
-	out, _ := os.Create(filename)
+	os.MkdirAll("stories", 0755) // create folder
+	path := filepath.Join("stories", filename)
+
+	out, _ := os.Create(path)
 	defer out.Close()
 	_, err = io.Copy(out, resp.Body)
 	return err
@@ -88,7 +105,7 @@ func saveFile(filename, url, sessionID string) error {
 
 func main() {
 	username := "the.rebel.kid"
-	sessionID := "SESSION ID FROM COOKIES"
+	sessionID := "SESSION ID"
 
 	userID, err := getUserID(username, sessionID)
 	if err != nil {
